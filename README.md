@@ -1,6 +1,7 @@
 # depbot
 
 [![ci](https://github.com/OTA-EITA/depbot/actions/workflows/ci.yml/badge.svg)](https://github.com/OTA-EITA/depbot/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/OTA-EITA/depbot/badge)](https://securityscorecards.dev/viewer/?uri=github.com/OTA-EITA/depbot)
 
 Dependabot のように、依存関係の新しいバージョンを見つけて**依存ごとに PR を作る** Go 製の CLI / GitHub Action です。
 Go モジュール、GitHub Actions、Dockerfile のベースイメージに対応し、GitHub Actions を**コミット SHA に固定**することもできます。
