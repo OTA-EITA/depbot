@@ -1,0 +1,35 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - misspell
+    - revive
+  settings:
+    revive:
+      rules:
+        # Internal packages are not a public API; doc comments are added where they help.
+        - name: exported
+          disabled: true
+    errcheck:
+      # Writing a report to stdout is best effort; a failed write has nowhere to be reported.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+  exclusions:
+    rules:
+      # Tests deliberately use temporary paths and file modes (e.g. to check
+      # that the executable bit is preserved).
+      - path: _test\.go
+        linters: [gosec]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
