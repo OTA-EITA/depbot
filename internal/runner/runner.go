@@ -5,6 +5,7 @@ package runner
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -161,39 +162,67 @@ type PRClient interface {
 }
 
 // OpenPRs opens one pull request per update. Each update is applied to a
-// fresh copy of the repository, so updates never leak into each other.
+// fresh copy of the repository, so updates never leak into each other. A
+// failed update does not stop the others; all failures are returned at the end.
 func OpenPRs(ctx context.Context, root, owner, repo, base string, gh PRClient, ups []update.Update, dryRun bool, log io.Writer) error {
+	var errs []error
 	for _, u := range ups {
-		branch := u.Branch()
-		if existing, err := gh.OpenPR(ctx, owner, repo, branch); err != nil {
-			return err
-		} else if existing != nil {
-			fmt.Fprintf(log, "skip  %s: already open as %s\n", u.Title(), existing.HTMLURL)
-			continue
+		if err := openPR(ctx, root, owner, repo, base, gh, u, dryRun, log); err != nil {
+			fmt.Fprintf(log, "fail  %s: %v\n", u.Title(), err)
+			errs = append(errs, fmt.Errorf("%s: %w", u.Name, err))
 		}
-		files, err := changedFiles(root, u)
-		if err != nil {
-			return fmt.Errorf("%s: %w", u.Name, err)
-		}
-		if len(files) == 0 {
-			fmt.Fprintf(log, "skip  %s: no file changed\n", u.Title())
-			continue
-		}
-		if dryRun {
-			var paths []string
-			for _, f := range files {
-				paths = append(paths, f.Path)
-			}
-			fmt.Fprintf(log, "would open %s on %s (%s)\n", u.Title(), branch, strings.Join(paths, ", "))
-			continue
-		}
-		pr, err := gh.CommitAndOpenPR(ctx, owner, repo, base, branch, u.Title(), Body(u), files)
-		if err != nil {
-			return fmt.Errorf("%s: %w", u.Name, err)
-		}
-		fmt.Fprintf(log, "open  %s: %s\n", u.Title(), pr.HTMLURL)
 	}
+	return errors.Join(errs...)
+}
+
+// workflowHint explains GitHub's rule that GITHUB_TOKEN cannot change workflows.
+const workflowHint = "updating files in .github/workflows needs a token with the workflows permission " +
+	"(a GitHub App token or a fine-grained PAT); the default GITHUB_TOKEN cannot change workflow files"
+
+func openPR(ctx context.Context, root, owner, repo, base string, gh PRClient, u update.Update, dryRun bool, log io.Writer) error {
+	branch := u.Branch()
+	existing, err := gh.OpenPR(ctx, owner, repo, branch)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		fmt.Fprintf(log, "skip  %s: already open as %s\n", u.Title(), existing.HTMLURL)
+		return nil
+	}
+	files, err := changedFiles(root, u)
+	if err != nil {
+		return err
+	}
+	if len(files) == 0 {
+		fmt.Fprintf(log, "skip  %s: no file changed\n", u.Title())
+		return nil
+	}
+	if dryRun {
+		var paths []string
+		for _, f := range files {
+			paths = append(paths, f.Path)
+		}
+		fmt.Fprintf(log, "would open %s on %s (%s)\n", u.Title(), branch, strings.Join(paths, ", "))
+		return nil
+	}
+	pr, err := gh.CommitAndOpenPR(ctx, owner, repo, base, branch, u.Title(), Body(u), files)
+	if err != nil {
+		if touchesWorkflows(files) && strings.Contains(err.Error(), "HTTP 403") {
+			return errors.New(workflowHint)
+		}
+		return err
+	}
+	fmt.Fprintf(log, "open  %s: %s\n", u.Title(), pr.HTMLURL)
 	return nil
+}
+
+func touchesWorkflows(files []github.File) bool {
+	for _, f := range files {
+		if strings.HasPrefix(f.Path, ".github/workflows/") {
+			return true
+		}
+	}
+	return false
 }
 
 // changedFiles applies u to a temporary copy of root and returns the files
