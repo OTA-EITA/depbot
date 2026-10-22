@@ -33,6 +33,7 @@ type Options struct {
 	Ecosystems map[string]bool
 	Ignore     []string
 	Pin        bool
+	PinOnly    bool
 }
 
 // Collect runs the selected ecosystems below root.
@@ -46,7 +47,7 @@ func Collect(ctx context.Context, root string, src Sources, opt Options) ([]upda
 		all = append(all, ups...)
 	}
 	if opt.Ecosystems[update.Actions] {
-		ups, err := actions.Find(ctx, root, src.GitHub, actions.Options{Pin: opt.Pin})
+		ups, err := actions.Find(ctx, root, src.GitHub, actions.Options{Pin: opt.Pin, PinOnly: opt.PinOnly})
 		if err != nil {
 			return nil, fmt.Errorf("github-actions: %w", err)
 		}
