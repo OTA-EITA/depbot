@@ -3,6 +3,7 @@ package runner
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,5 +124,45 @@ func TestBody(t *testing.T) {
 	g := Body(update.Update{Ecosystem: update.GoMod, Name: "golang.org/x/text", Dir: "tools", To: "v0.30.0", Apply: func(string) error { return nil }})
 	if !strings.Contains(g, "pkg.go.dev/golang.org/x/text@v0.30.0") || !strings.Contains(g, "`tools/go.sum`") {
 		t.Errorf("%s", g)
+	}
+}
+
+// failingPRs rejects commits that touch workflows, like GITHUB_TOKEN does.
+type failingPRs struct{ fakePRs }
+
+func (f *failingPRs) CommitAndOpenPR(ctx context.Context, o, r, base, branch, title, body string, files []github.File) (*github.PullRequest, error) {
+	for _, file := range files {
+		if strings.HasPrefix(file.Path, ".github/workflows/") {
+			return nil, errors.New("POST /repos/o/r/git/trees: HTTP 403: Resource not accessible by integration")
+		}
+	}
+	return f.fakePRs.CommitAndOpenPR(ctx, o, r, base, branch, title, body, files)
+}
+
+func TestOpenPRsContinuesAfterFailure(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".github", "workflows"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".github", "workflows", "ci.yml"), []byte("- uses: actions/checkout@v4\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "Dockerfile"), []byte("FROM alpine:3.19\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ups := []update.Update{
+		{Ecosystem: update.Actions, Name: "actions/checkout", Dir: ".", From: "v4", To: "v5",
+			Edits: []update.Edit{{File: ".github/workflows/ci.yml", Line: 1, Old: "actions/checkout@v4", New: "actions/checkout@v5"}}},
+		{Ecosystem: update.Docker, Name: "alpine", Dir: ".", From: "3.19", To: "3.22",
+			Edits: []update.Edit{{File: "Dockerfile", Line: 1, Old: "alpine:3.19", New: "alpine:3.22"}}},
+	}
+	prs := &failingPRs{}
+	var log bytes.Buffer
+	err := OpenPRs(context.Background(), root, "o", "r", "main", prs, ups, false, &log)
+	if err == nil || !strings.Contains(err.Error(), "workflows permission") {
+		t.Fatalf("want the workflow hint, got %v", err)
+	}
+	if len(prs.opened) != 1 || prs.opened[0] != "depbot/docker/alpine-3.22" {
+		t.Fatalf("the docker update must still be opened: %v\n%s", prs.opened, log.String())
 	}
 }
