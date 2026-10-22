@@ -27,7 +27,10 @@ depbot check
 # 作業ツリーに適用
 depbot update
 
-# GitHub Actions を SHA に固定
+# GitHub Actions を今のバージョンのまま SHA に固定（最初の導入に安全）
+depbot update --ecosystem github-actions --pin-only
+
+# 最新版に上げたうえで SHA に固定
 depbot update --ecosystem github-actions --pin
 
 # 依存ごとに PR を作成（GITHUB_TOKEN が必要）。まずは --dry-run で確認
@@ -50,7 +53,8 @@ gomod           golang.org/x/text  v0.20.0      v0.43.0      minor  .
 |---|---|---|
 | `--ecosystem` | `gomod,github-actions,docker` | 対象のエコシステム |
 | `--ignore` | - | 対象外にする依存（`*` でワイルドカード、複数指定可） |
-| `--pin` | `false` | GitHub Actions を SHA に固定 |
+| `--pin` | `false` | GitHub Actions を最新版に更新したうえで SHA に固定 |
+| `--pin-only` | `false` | バージョンは上げずに、今のバージョンのまま SHA に固定（既存リポジトリへの最初の導入向け） |
 | `--output`（check） | `table` | `table` / `json` / `markdown` |
 | `--exit-code`（check） | `false` | 更新があれば終了コード 1（CI で古い依存を検知） |
 | `--repo` / `--base` / `--dry-run`（pr） | `$GITHUB_REPOSITORY` / `main` / `false` | PR の作成先 |
