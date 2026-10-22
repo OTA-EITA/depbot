@@ -21,7 +21,7 @@ done
 work=$(mktemp -d)
 cp -R testdata/sample/. "$work"
 "$bin" update "$work"
-(cd "$work" && go build ./...) || fail "updated sample does not build"
+(cd "$work" && GOTOOLCHAIN=auto go build ./...) || fail "updated sample does not build"
 "$bin" check --exit-code "$work" || fail "updates remain after depbot update"
 
 # 3. --pin rewrites action tags to commit SHAs with the version in a comment.
