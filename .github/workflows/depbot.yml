@@ -16,3 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: ./
+        with:
+          # The default GITHUB_TOKEN cannot change workflow files, so actions
+          # are updated separately with a token that has the workflows permission.
+          ecosystems: gomod,docker
