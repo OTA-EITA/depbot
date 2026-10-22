@@ -1,0 +1,7 @@
+/bin/
+/dist/
+*.test
+coverage.out
+updates.json
+pr.log
+.DS_Store
