@@ -144,3 +144,14 @@ func TestGoProxy(t *testing.T) {
 		t.Error("first HTTP proxy is used")
 	}
 }
+
+func TestPinOnly(t *testing.T) {
+	root := project(t)
+	if code := run([]string{"update", "--ecosystem", "github-actions", "--pin-only", root}, io.Discard, io.Discard, testDeps(nil)); code != exitOK {
+		t.Fatalf("exit %d", code)
+	}
+	wf, _ := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	if !strings.Contains(string(wf), "actions/checkout@"+strings.Repeat("b", 40)+" # v4") {
+		t.Fatalf("workflow:\n%s", wf)
+	}
+}
