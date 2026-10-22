@@ -1,0 +1,52 @@
+name: depbot
+description: Open pull requests that update Go modules, GitHub Actions and Dockerfile base images (and optionally pin actions to SHAs)
+branding:
+  icon: package
+  color: blue
+
+inputs:
+  ecosystems:
+    description: Comma separated ecosystems to update (gomod, github-actions, docker)
+    default: gomod,github-actions,docker
+  pin:
+    description: Pin GitHub Actions to commit SHAs
+    default: "false"
+  ignore:
+    description: Space separated dependency names to skip (* is a wildcard)
+    default: ""
+  base:
+    description: Base branch for pull requests
+    default: ${{ github.event.repository.default_branch }}
+  directory:
+    description: Directory to scan
+    default: .
+  token:
+    description: Token used to open pull requests (needs contents and pull-requests write)
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v6
+      with:
+        go-version: stable
+        cache: false
+    - name: Install depbot
+      shell: bash
+      env:
+        REF: ${{ github.action_ref }}
+      run: go install "github.com/OTA-EITA/depbot/cmd/depbot@${REF:-latest}"
+    - name: Open pull requests
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        ECOSYSTEMS: ${{ inputs.ecosystems }}
+        PIN: ${{ inputs.pin }}
+        IGNORE: ${{ inputs.ignore }}
+        BASE: ${{ inputs.base }}
+        DIR: ${{ inputs.directory }}
+      run: |
+        args=(pr --repo "$GITHUB_REPOSITORY" --base "$BASE" --ecosystem "$ECOSYSTEMS")
+        [ "$PIN" = "true" ] && args+=(--pin)
+        for name in $IGNORE; do args+=(--ignore "$name"); done
+        "$(go env GOPATH)/bin/depbot" "${args[@]}" "$DIR"
