@@ -95,3 +95,14 @@ func TestProxyErrors(t *testing.T) {
 		t.Fatal("invalid module paths must be rejected")
 	}
 }
+
+func TestToolchain(t *testing.T) {
+	t.Setenv("DEPBOT_GOTOOLCHAIN", "")
+	if toolchain() != "auto" {
+		t.Error("default must be auto")
+	}
+	t.Setenv("DEPBOT_GOTOOLCHAIN", "local")
+	if toolchain() != "local" {
+		t.Error("DEPBOT_GOTOOLCHAIN must override")
+	}
+}
