@@ -12,7 +12,7 @@ Dockerfile base images, and opens one pull request per update. It can also pin a
 
 | | 内容 |
 |---|---|
-| Go モジュール | Go のモジュールプロキシ（`$GOPROXY`）で直接依存の最新版を調べ、`go get` と `go mod tidy` で go.sum まで更新。メジャーバージョンはモジュールパスが変わるため同じメジャー内で更新 |
+| Go モジュール | Go のモジュールプロキシ（`$GOPROXY`）で直接依存の最新版を調べ、`go get` と `go mod tidy` で go.sum まで更新。メジャーバージョンはモジュールパスが変わるため同じメジャー内で更新。更新先がより新しい Go を要求する場合は、Dependabot と同じく `go` ディレクティブも上がります（`GOTOOLCHAIN=auto` で実行。`DEPBOT_GOTOOLCHAIN` で変更可能） |
 | GitHub Actions | `uses:` のタグを最新に更新（`v4` → `v5` のように書き方の粒度を保つ）。SHA 固定（`@<sha> # v4.2.2`）されたものは SHA とコメントの両方を更新 |
 | Dockerfile | `FROM` のタグを、形式を保って更新（`golang:1.24-alpine` → `golang:1.25-alpine`）。ビルドステージ、`${ARG}`、ダイジェスト固定、`latest` は対象外。Docker Hub / GHCR / GCR / registry.k8s.io など OCI 準拠のレジストリに匿名トークンで対応 |
 | `--pin` | `uses: actions/checkout@v4` を `uses: actions/checkout@<sha> # v4` に変換。タグの付け替えやすり替えによるサプライチェーン攻撃を防ぐ（GitHub のセキュリティ強化ガイドの推奨） |
