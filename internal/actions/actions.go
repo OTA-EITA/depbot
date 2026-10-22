@@ -25,6 +25,8 @@ type Options struct {
 	// Pin converts tag references (uses: x/y@v4) to commit SHAs with the
 	// version kept in a comment, as recommended by GitHub's hardening guide.
 	Pin bool
+	// PinOnly pins references at their current version without bumping them.
+	PinOnly bool
 }
 
 // usesRE matches `uses: owner/repo[/path]@ref # comment`.
@@ -84,7 +86,7 @@ func propose(r reference, tags []github.Tag, opt Options) (update.Update, bool) 
 	switch {
 	case shaRE.MatchString(r.ref):
 		// Pinned: the comment carries the version, e.g. "# v4.2.2".
-		if version.Canonical(r.comment) == "" {
+		if opt.PinOnly || version.Canonical(r.comment) == "" {
 			return u, false
 		}
 		latest := version.Latest(r.comment, names, false)
@@ -95,6 +97,9 @@ func propose(r reference, tags []github.Tag, opt Options) (update.Update, bool) 
 		edit(shaOf[latest], latest)
 	case version.Canonical(r.ref) != "":
 		latest := version.Latest(r.ref, names, false)
+		if opt.PinOnly {
+			latest = ""
+		}
 		switch {
 		case latest != "" && opt.Pin && shaOf[latest] != "":
 			u.From, u.To, u.Kind = r.ref, latest, version.Kind(r.ref, latest)
@@ -102,7 +107,7 @@ func propose(r reference, tags []github.Tag, opt Options) (update.Update, bool) 
 		case latest != "":
 			u.From, u.To, u.Kind = r.ref, latest, version.Kind(r.ref, latest)
 			edit(latest, "")
-		case opt.Pin && shaOf[r.ref] != "":
+		case (opt.Pin || opt.PinOnly) && shaOf[r.ref] != "":
 			u.From, u.To, u.Kind = r.ref, r.ref, "pin"
 			edit(shaOf[r.ref], r.ref)
 		default:
