@@ -1,5 +1,5 @@
 module github.com/OTA-EITA/depbot
 
-go 1.25.4
+go 1.26.0
 
-require golang.org/x/mod v0.38.0
+require golang.org/x/mod v0.42.0
