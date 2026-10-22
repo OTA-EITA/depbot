@@ -78,6 +78,7 @@ type common struct {
 	ecosystems string
 	ignore     multiFlag
 	pin        bool
+	pinOnly    bool
 	output     string
 	exitCode   bool
 	repo       string
@@ -115,6 +116,7 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 	fs.StringVar(&c.ecosystems, "ecosystem", "gomod,github-actions,docker", "comma separated: gomod, github-actions, docker")
 	fs.Var(&c.ignore, "ignore", "dependency name to skip; * is a wildcard (repeatable)")
 	fs.BoolVar(&c.pin, "pin", false, "pin GitHub Actions to commit SHAs (version kept in a comment)")
+	fs.BoolVar(&c.pinOnly, "pin-only", false, "pin GitHub Actions at their current version without bumping anything")
 	if cmd == "check" {
 		fs.StringVar(&c.output, "output", "table", "output format: table, json or markdown")
 		fs.BoolVar(&c.exitCode, "exit-code", false, "exit 1 when updates are available")
@@ -155,7 +157,7 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	ups, err := runner.Collect(ctx, root, d.sources, runner.Options{Ecosystems: eco, Ignore: c.ignore, Pin: c.pin})
+	ups, err := runner.Collect(ctx, root, d.sources, runner.Options{Ecosystems: eco, Ignore: c.ignore, Pin: c.pin, PinOnly: c.pinOnly})
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)
 		return exitFail
