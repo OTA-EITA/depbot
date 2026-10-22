@@ -168,12 +168,22 @@ func newer(ctx context.Context, proxy Proxy, path, cur string) (string, error) {
 	return best, nil
 }
 
+// toolchain is the GOTOOLCHAIN used for go get. "auto" lets the go command
+// fetch a newer toolchain when an update requires one (raising the go
+// directive, as Dependabot does), even where CI sets GOTOOLCHAIN=local.
+func toolchain() string {
+	if t := os.Getenv("DEPBOT_GOTOOLCHAIN"); t != "" {
+		return t
+	}
+	return "auto"
+}
+
 // goGet updates one requirement and tidies the module, which also refreshes go.sum.
 func goGet(dir, path, ver string) error {
 	for _, args := range [][]string{{"get", path + "@" + ver}, {"mod", "tidy"}} {
 		cmd := exec.Command("go", args...) // #nosec G204 -- fixed binary, arguments from go.mod and the proxy
 		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GOFLAGS=-mod=mod")
+		cmd.Env = append(os.Environ(), "GOFLAGS=-mod=mod", "GOTOOLCHAIN="+toolchain())
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("go %s: %w\n%s", strings.Join(args, " "), err, out)
 		}
