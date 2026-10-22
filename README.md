@@ -79,7 +79,7 @@ jobs:
 ```
 
 - リポジトリの Settings → Actions → General で「Allow GitHub Actions to create and approve pull requests」を有効にしてください。
-- `GITHUB_TOKEN` で作った PR では CI が自動で走りません（GitHub の仕様）。CI を走らせたい場合は、`token` に GitHub App のトークンか fine-grained PAT を渡してください。
+- 既定の `GITHUB_TOKEN` には GitHub の仕様で 2 つの制約があります。`.github/workflows/` 配下のファイルを変更できない（GitHub Actions の更新・SHA 固定の PR は作れず、depbot はその旨を表示してほかの更新を続けます）ことと、作った PR で CI が自動で走らないことです。どちらも、`token` に workflows 権限を持つ GitHub App のトークンか fine-grained PAT を渡せば解消します。
 
 このリポジトリ自身も [`.github/workflows/depbot.yml`](.github/workflows/depbot.yml) で depbot に依存を更新させています。
 
