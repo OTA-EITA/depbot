@@ -124,3 +124,30 @@ func TestPin(t *testing.T) {
 		t.Errorf("want 2 pin-only updates (setup-go in ci.yml and action.yml), got %d", pins)
 	}
 }
+
+func TestPinOnlyKeepsVersions(t *testing.T) {
+	root := setup(t)
+	ups, err := Find(context.Background(), root, tags, Options{PinOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range ups {
+		if u.Kind != "pin" || u.From != u.To {
+			t.Errorf("pin-only must not bump: %+v", u)
+		}
+		if err := update.ApplyEdits(root, u.Edits); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data, _ := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	s := string(data)
+	for _, want := range []string{
+		"- uses: actions/checkout@" + strings.Repeat("4", 40) + " # v4\n",
+		"- uses: actions/checkout@" + strings.Repeat("4", 40) + " # v4.2.2\n",
+		"- uses: github/codeql-action/upload-sarif@" + strings.Repeat("b", 40) + " # v3\n",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %q in\n%s", want, s)
+		}
+	}
+}
